@@ -55,7 +55,7 @@ func RenderTemplate(w http.ResponseWriter, tmpl string, td *models.TemplateData)
 func CreateTemplateCache() (map[string]*template.Template, error) {
 	myCache := map[string]*template.Template{}
 
-	pages, err := filepath.Glob("./templates/*.gohtml")
+	pages, err := filepath.Glob("./templates/*.page.gohtml")
 
 	if err != nil {
 		return myCache, err
