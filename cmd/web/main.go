@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	"github.com/alexedwards/scs/v2"
-	"github.com/chelobotix/booking-go/pkg/config"
-	"github.com/chelobotix/booking-go/pkg/handlers"
-	"github.com/chelobotix/booking-go/pkg/render"
+	"github.com/chelobotix/booking-go/internal/config"
+	"github.com/chelobotix/booking-go/internal/handlers"
+	"github.com/chelobotix/booking-go/internal/render"
 	"log"
 	"net/http"
 	"time"

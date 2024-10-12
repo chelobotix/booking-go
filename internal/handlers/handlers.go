@@ -1,9 +1,12 @@
 package handlers
 
 import (
-	"github.com/chelobotix/booking-go/pkg/config"
-	"github.com/chelobotix/booking-go/pkg/models"
-	"github.com/chelobotix/booking-go/pkg/render"
+	"encoding/json"
+	"fmt"
+	"github.com/chelobotix/booking-go/internal/config"
+	"github.com/chelobotix/booking-go/internal/models"
+	"github.com/chelobotix/booking-go/internal/render"
+	"log"
 	"net/http"
 )
 
@@ -32,7 +35,7 @@ func (repo *Repository) Home(w http.ResponseWriter, r *http.Request) {
 	remoteIP := r.RemoteAddr
 	repo.AppConfig.Session.Put(r.Context(), "remote-ip", remoteIP)
 
-	render.RenderTemplate(w, "home.page.gohtml", &models.TemplateData{})
+	render.RenderTemplate(w, r, "home.page.gohtml", &models.TemplateData{})
 }
 
 // About is the handler for the about page
@@ -43,7 +46,7 @@ func (repo *Repository) About(w http.ResponseWriter, r *http.Request) {
 	remoteIP := repo.AppConfig.Session.GetString(r.Context(), "remote-ip")
 	stringMap["remoteIP`"] = remoteIP
 
-	render.RenderTemplate(w, "about.page.gohtml", &models.TemplateData{
+	render.RenderTemplate(w, r, "about.page.gohtml", &models.TemplateData{
 		StringMap: stringMap,
 	})
 }
@@ -51,33 +54,57 @@ func (repo *Repository) About(w http.ResponseWriter, r *http.Request) {
 // Generals is the handler for the home page
 func (repo *Repository) Generals(w http.ResponseWriter, r *http.Request) {
 
-	render.RenderTemplate(w, "generals.page.gohtml", &models.TemplateData{})
+	render.RenderTemplate(w, r, "generals.page.gohtml", &models.TemplateData{})
 }
 
 // Reservations is the handler for the home page
 func (repo *Repository) Reservations(w http.ResponseWriter, r *http.Request) {
 
-	render.RenderTemplate(w, "make-reservation.page.gohtml", &models.TemplateData{})
+	render.RenderTemplate(w, r, "make-reservation.page.gohtml", &models.TemplateData{})
 }
 
 // Major is the handler for the home page
 func (repo *Repository) Major(w http.ResponseWriter, r *http.Request) {
 
-	render.RenderTemplate(w, "majors.page.gohtml", &models.TemplateData{})
+	render.RenderTemplate(w, r, "majors.page.gohtml", &models.TemplateData{})
 }
 
 // Availability is the handler for the home page
 func (repo *Repository) Availability(w http.ResponseWriter, r *http.Request) {
-	render.RenderTemplate(w, "search-availability.page.gohtml", &models.TemplateData{})
+	render.RenderTemplate(w, r, "search-availability.page.gohtml", &models.TemplateData{})
 }
 
 // PostAvailability is the handler for the home page
 func (repo *Repository) PostAvailability(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Posted to search availability"))
+	start := r.Form.Get("start")
+	end := r.Form.Get("end")
+
+	w.Write([]byte(fmt.Sprintf("start date is %s and end date is %s", start, end)))
+}
+
+type jsonResponse struct {
+	Ok      bool   `json:"ok"`
+	Message string `json:"message"`
+}
+
+// AvailabilityJSON is the handler for the home page
+func (repo *Repository) AvailabilityJSON(w http.ResponseWriter, r *http.Request) {
+	response := jsonResponse{
+		Ok:      true,
+		Message: "Available",
+	}
+
+	outResponse, err := json.MarshalIndent(response, "", "")
+	if err != nil {
+		log.Println(err)
+	}
+
+	w.Header().Set("Content-Type", "application-json")
+	w.Write(outResponse)
 }
 
 // Contact is the handler for the home page
 func (repo *Repository) Contact(w http.ResponseWriter, r *http.Request) {
 
-	render.RenderTemplate(w, "contact.page.gohtml", &models.TemplateData{})
+	render.RenderTemplate(w, r, "contact.page.gohtml", &models.TemplateData{})
 }
