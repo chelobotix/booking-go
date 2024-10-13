@@ -62,9 +62,12 @@ func (repo *Repository) Generals(w http.ResponseWriter, r *http.Request) {
 func (repo *Repository) Reservations(w http.ResponseWriter, r *http.Request) {
 	var emptyReservation models.Reservation
 	data := make(map[string]interface{})
+
 	data["reservation"] = emptyReservation
+
 	render.RenderTemplate(w, r, "make-reservation.page.gohtml", &models.TemplateData{
 		Form: forms.New(nil),
+		Data: data,
 	})
 }
 
@@ -85,7 +88,9 @@ func (repo *Repository) PostReservations(w http.ResponseWriter, r *http.Request)
 
 	form := forms.New(r.PostForm)
 
-	form.Has("first_name", r)
+	form.Required("first_name", "last_name", "email", "phone")
+	form.MinLength("first_name", 3)
+	form.IsEmail("email")
 
 	if !form.Valid() {
 		data := make(map[string]interface{})
