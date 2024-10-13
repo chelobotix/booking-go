@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/chelobotix/booking-go/internal/config"
+	"github.com/chelobotix/booking-go/internal/forms"
 	"github.com/chelobotix/booking-go/internal/models"
 	"github.com/chelobotix/booking-go/internal/render"
 	"log"
@@ -59,8 +60,42 @@ func (repo *Repository) Generals(w http.ResponseWriter, r *http.Request) {
 
 // Reservations is the handler for the home page
 func (repo *Repository) Reservations(w http.ResponseWriter, r *http.Request) {
+	var emptyReservation models.Reservation
+	data := make(map[string]interface{})
+	data["reservation"] = emptyReservation
+	render.RenderTemplate(w, r, "make-reservation.page.gohtml", &models.TemplateData{
+		Form: forms.New(nil),
+	})
+}
 
-	render.RenderTemplate(w, r, "make-reservation.page.gohtml", &models.TemplateData{})
+// PostReservations is the handler for the home page
+func (repo *Repository) PostReservations(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	reservation := models.Reservation{
+		FirstName: r.Form.Get("first_name"),
+		LastName:  r.Form.Get("last_name"),
+		Email:     r.Form.Get("email"),
+		Phone:     r.Form.Get("phone"),
+	}
+
+	form := forms.New(r.PostForm)
+
+	form.Has("first_name", r)
+
+	if !form.Valid() {
+		data := make(map[string]interface{})
+		data["reservation"] = reservation
+		render.RenderTemplate(w, r, "make-reservation.page.gohtml", &models.TemplateData{
+			Form: form,
+			Data: data,
+		})
+		return
+	}
 }
 
 // Major is the handler for the home page
