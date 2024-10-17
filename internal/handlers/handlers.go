@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/chelobotix/booking-go/internal/config"
 	"github.com/chelobotix/booking-go/internal/forms"
+	"github.com/chelobotix/booking-go/internal/helpers"
 	"github.com/chelobotix/booking-go/internal/models"
 	"github.com/chelobotix/booking-go/internal/render"
-	"log"
 	"net/http"
 )
 
@@ -33,23 +34,13 @@ func NewHandlers(repository *Repository) {
 
 // Home is the handler for the home page
 func (repo *Repository) Home(w http.ResponseWriter, r *http.Request) {
-	remoteIP := r.RemoteAddr
-	repo.AppConfig.Session.Put(r.Context(), "remote-ip", remoteIP)
-
 	render.RenderTemplate(w, r, "home.page.gohtml", &models.TemplateData{})
 }
 
 // About is the handler for the about page
 func (repo *Repository) About(w http.ResponseWriter, r *http.Request) {
-	stringMap := map[string]string{}
-	stringMap["test"] = "Hello buddy!"
 
-	remoteIP := repo.AppConfig.Session.GetString(r.Context(), "remote-ip")
-	stringMap["remoteIP`"] = remoteIP
-
-	render.RenderTemplate(w, r, "about.page.gohtml", &models.TemplateData{
-		StringMap: stringMap,
-	})
+	render.RenderTemplate(w, r, "about.page.gohtml", &models.TemplateData{})
 }
 
 // Generals is the handler for the home page
@@ -74,8 +65,10 @@ func (repo *Repository) Reservations(w http.ResponseWriter, r *http.Request) {
 // PostReservations is the handler for the home page
 func (repo *Repository) PostReservations(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
+
+	err = errors.New("This is an error")
 	if err != nil {
-		log.Println(err)
+		helpers.ServerError(w, err)
 		return
 	}
 
@@ -101,6 +94,27 @@ func (repo *Repository) PostReservations(w http.ResponseWriter, r *http.Request)
 		})
 		return
 	}
+
+	repo.AppConfig.Session.Put(r.Context(), "reservation", reservation)
+
+	http.Redirect(w, r, "/reservation-summary", http.StatusSeeOther)
+}
+
+func (repo *Repository) ReservationSummary(w http.ResponseWriter, r *http.Request) {
+	reservation, ok := repo.AppConfig.Session.Get(r.Context(), "reservation").(models.Reservation)
+	if !ok {
+		repo.AppConfig.ErrorLog.Println("Cannot get error from session")
+		repo.AppConfig.Session.Put(r.Context(), "error", "cannon get reservation from session")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	repo.AppConfig.Session.Remove(r.Context(), "reservation")
+	data := make(map[string]interface{})
+	data["reservation"] = reservation
+	render.RenderTemplate(w, r, "reservation-summary.page.gohtml", &models.TemplateData{
+		Data: data,
+	})
 }
 
 // Major is the handler for the home page
@@ -136,9 +150,8 @@ func (repo *Repository) AvailabilityJSON(w http.ResponseWriter, r *http.Request)
 
 	outResponse, err := json.MarshalIndent(response, "", "")
 	if err != nil {
-		log.Println(err)
+		helpers.ServerError(w, err)
 	}
-
 	w.Header().Set("Content-Type", "application-json")
 	w.Write(outResponse)
 }
