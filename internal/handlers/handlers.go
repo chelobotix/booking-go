@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chelobotix/booking-go/internal/config"
+	"github.com/chelobotix/booking-go/internal/driver"
 	"github.com/chelobotix/booking-go/internal/forms"
 	"github.com/chelobotix/booking-go/internal/helpers"
 	"github.com/chelobotix/booking-go/internal/models"
 	"github.com/chelobotix/booking-go/internal/render"
+	"github.com/chelobotix/booking-go/internal/repository"
+	"github.com/chelobotix/booking-go/internal/repository/dbrepo"
 	"net/http"
 )
 
@@ -18,12 +21,14 @@ var Repo *Repository
 // Repository ins the repository type
 type Repository struct {
 	AppConfig *config.AppConfig
+	DB        repository.DatabaseRepo
 }
 
 // NewRepo creates a new repository
-func NewRepo(appConfig *config.AppConfig) *Repository {
+func NewRepo(appConfig *config.AppConfig, db *driver.DB) *Repository {
 	return &Repository{
 		AppConfig: appConfig,
+		DB:        dbrepo.NewPostgresRepo(db.SQL, appConfig),
 	}
 }
 
@@ -34,19 +39,19 @@ func NewHandlers(repository *Repository) {
 
 // Home is the handler for the home page
 func (repo *Repository) Home(w http.ResponseWriter, r *http.Request) {
-	render.RenderTemplate(w, r, "home.page.gohtml", &models.TemplateData{})
+	render.Template(w, r, "home.page.gohtml", &models.TemplateData{})
 }
 
 // About is the handler for the about page
 func (repo *Repository) About(w http.ResponseWriter, r *http.Request) {
 
-	render.RenderTemplate(w, r, "about.page.gohtml", &models.TemplateData{})
+	render.Template(w, r, "about.page.gohtml", &models.TemplateData{})
 }
 
 // Generals is the handler for the home page
 func (repo *Repository) Generals(w http.ResponseWriter, r *http.Request) {
 
-	render.RenderTemplate(w, r, "generals.page.gohtml", &models.TemplateData{})
+	render.Template(w, r, "generals.page.gohtml", &models.TemplateData{})
 }
 
 // Reservations is the handler for the home page
@@ -56,7 +61,7 @@ func (repo *Repository) Reservations(w http.ResponseWriter, r *http.Request) {
 
 	data["reservation"] = emptyReservation
 
-	render.RenderTemplate(w, r, "make-reservation.page.gohtml", &models.TemplateData{
+	render.Template(w, r, "make-reservation.page.gohtml", &models.TemplateData{
 		Form: forms.New(nil),
 		Data: data,
 	})
@@ -88,7 +93,7 @@ func (repo *Repository) PostReservations(w http.ResponseWriter, r *http.Request)
 	if !form.Valid() {
 		data := make(map[string]interface{})
 		data["reservation"] = reservation
-		render.RenderTemplate(w, r, "make-reservation.page.gohtml", &models.TemplateData{
+		render.Template(w, r, "make-reservation.page.gohtml", &models.TemplateData{
 			Form: form,
 			Data: data,
 		})
@@ -112,7 +117,7 @@ func (repo *Repository) ReservationSummary(w http.ResponseWriter, r *http.Reques
 	repo.AppConfig.Session.Remove(r.Context(), "reservation")
 	data := make(map[string]interface{})
 	data["reservation"] = reservation
-	render.RenderTemplate(w, r, "reservation-summary.page.gohtml", &models.TemplateData{
+	render.Template(w, r, "reservation-summary.page.gohtml", &models.TemplateData{
 		Data: data,
 	})
 }
@@ -120,12 +125,12 @@ func (repo *Repository) ReservationSummary(w http.ResponseWriter, r *http.Reques
 // Major is the handler for the home page
 func (repo *Repository) Major(w http.ResponseWriter, r *http.Request) {
 
-	render.RenderTemplate(w, r, "majors.page.gohtml", &models.TemplateData{})
+	render.Template(w, r, "majors.page.gohtml", &models.TemplateData{})
 }
 
 // Availability is the handler for the home page
 func (repo *Repository) Availability(w http.ResponseWriter, r *http.Request) {
-	render.RenderTemplate(w, r, "search-availability.page.gohtml", &models.TemplateData{})
+	render.Template(w, r, "search-availability.page.gohtml", &models.TemplateData{})
 }
 
 // PostAvailability is the handler for the home page
@@ -159,5 +164,5 @@ func (repo *Repository) AvailabilityJSON(w http.ResponseWriter, r *http.Request)
 // Contact is the handler for the home page
 func (repo *Repository) Contact(w http.ResponseWriter, r *http.Request) {
 
-	render.RenderTemplate(w, r, "contact.page.gohtml", &models.TemplateData{})
+	render.Template(w, r, "contact.page.gohtml", &models.TemplateData{})
 }

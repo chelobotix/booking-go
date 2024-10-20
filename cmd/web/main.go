@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/alexedwards/scs/v2"
 	"github.com/chelobotix/booking-go/internal/config"
+	"github.com/chelobotix/booking-go/internal/driver"
 	"github.com/chelobotix/booking-go/internal/handlers"
 	"github.com/chelobotix/booking-go/internal/helpers"
 	"github.com/chelobotix/booking-go/internal/models"
@@ -24,11 +25,13 @@ var errorLog *log.Logger
 
 // main is the main function
 func main() {
-	err := run()
+	db, err := run()
 
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	defer db.SQL.Close()
 
 	fmt.Println(fmt.Sprintf("Staring application on port %s", portNumber))
 
@@ -40,8 +43,11 @@ func main() {
 	_ = srv.ListenAndServe()
 }
 
-func run() error {
+func run() (*driver.DB, error) {
 	gob.Register(models.Reservation{})
+	gob.Register(models.User{})
+	gob.Register(models.Room{})
+	gob.Register(models.Restriction{})
 
 	appConfig.Production = false
 	infoLog = log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
@@ -56,22 +62,29 @@ func run() error {
 	session.Cookie.Secure = appConfig.Production
 	appConfig.Session = session
 
+	// connect to DB
+	db, err := driver.ConnectSQL("host=localhost port=5432 dbname=booking user=x5 password=")
+	if err != nil {
+		log.Fatal("Cannot connect to database")
+	}
+	log.Println("Connected to database")
+
 	tc, err := render.CreateTemplateCache()
 
 	if err != nil {
 		log.Fatal("cant create templateCache")
-		return err
+		return nil, err
 	}
 
 	appConfig.TemplateCache = tc
 	appConfig.UseCache = true
 
-	repo := handlers.NewRepo(&appConfig)
+	repo := handlers.NewRepo(&appConfig, db)
 	handlers.NewHandlers(repo)
 
-	render.NewTemplates(&appConfig)
+	render.NewRenderer(&appConfig)
 
 	helpers.NewHelpers(&appConfig)
 
-	return nil
+	return db, nil
 }
