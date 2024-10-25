@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"github.com/chelobotix/booking-go/internal/config"
 	"github.com/chelobotix/booking-go/internal/driver"
 	"github.com/chelobotix/booking-go/internal/forms"
@@ -12,6 +10,7 @@ import (
 	"github.com/chelobotix/booking-go/internal/render"
 	"github.com/chelobotix/booking-go/internal/repository"
 	"github.com/chelobotix/booking-go/internal/repository/dbrepo"
+	"github.com/go-chi/chi/v5"
 	"net/http"
 	"strconv"
 	"time"
@@ -73,7 +72,6 @@ func (repo *Repository) Reservations(w http.ResponseWriter, r *http.Request) {
 func (repo *Repository) PostReservations(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 
-	err = errors.New("This is an error")
 	if err != nil {
 		helpers.ServerError(w, err)
 		return
@@ -86,16 +84,19 @@ func (repo *Repository) PostReservations(w http.ResponseWriter, r *http.Request)
 	startDate, err := time.Parse(layout, sd)
 	if err != nil {
 		helpers.ServerError(w, err)
+		return
 	}
 
 	endDate, err := time.Parse(layout, ed)
 	if err != nil {
 		helpers.ServerError(w, err)
+		return
 	}
 
 	roomID, err := strconv.Atoi(r.Form.Get("room_id"))
 	if err != nil {
 		helpers.ServerError(w, err)
+		return
 	}
 
 	reservation := models.Reservation{
@@ -124,9 +125,24 @@ func (repo *Repository) PostReservations(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	err = repo.DB.InsertReservation(reservation)
+	newReservationId, err := repo.DB.InsertReservation(reservation)
 	if err != nil {
 		helpers.ServerError(w, err)
+		return
+	}
+
+	restriction := models.RoomRestriction{
+		StartDate:     startDate,
+		EndDate:       endDate,
+		RoomID:        roomID,
+		ReservationID: newReservationId,
+		RestrictionID: 1,
+	}
+
+	err = repo.DB.InsertRoomRestriction(restriction)
+	if err != nil {
+		helpers.ServerError(w, err)
+		return
 	}
 
 	repo.AppConfig.Session.Put(r.Context(), "reservation", reservation)
@@ -167,7 +183,41 @@ func (repo *Repository) PostAvailability(w http.ResponseWriter, r *http.Request)
 	start := r.Form.Get("start")
 	end := r.Form.Get("end")
 
-	w.Write([]byte(fmt.Sprintf("start date is %s and end date is %s", start, end)))
+	layout := "2006-01-02"
+	startDate, err := time.Parse(layout, start)
+	if err != nil {
+		helpers.ServerError(w, err)
+	}
+	endtDate, err := time.Parse(layout, end)
+	if err != nil {
+		helpers.ServerError(w, err)
+	}
+
+	availableRooms, err := repo.DB.SearchAvailabilityForAllRooms(startDate, endtDate)
+	if err != nil {
+		helpers.ServerError(w, err)
+		return
+	}
+
+	if len(availableRooms) == 0 {
+		repo.AppConfig.Session.Put(r.Context(), "error", "No availability")
+		http.Redirect(w, r, "/search-availability", http.StatusSeeOther)
+		return
+	}
+
+	data := make(map[string]interface{})
+	data["availableRooms"] = availableRooms
+
+	res := models.Reservation{
+		StartDate: startDate,
+		EndDate:   endtDate,
+	}
+
+	repo.AppConfig.Session.Put(r.Context(), "reservation", res)
+
+	render.Template(w, r, "choose-room.page.gohtml", &models.TemplateData{
+		Data: data,
+	})
 }
 
 type jsonResponse struct {
@@ -194,4 +244,24 @@ func (repo *Repository) AvailabilityJSON(w http.ResponseWriter, r *http.Request)
 func (repo *Repository) Contact(w http.ResponseWriter, r *http.Request) {
 
 	render.Template(w, r, "contact.page.gohtml", &models.TemplateData{})
+}
+
+func (repo *Repository) ChooseRoom(w http.ResponseWriter, r *http.Request) {
+	roomId, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		helpers.ServerError(w, err)
+		return
+	}
+
+	res, ok := repo.AppConfig.Session.Get(r.Context(), "reservation").(models.Reservation)
+	if !ok {
+		helpers.ServerError(w, err)
+		return
+	}
+
+	res.RoomID = roomId
+
+	repo.AppConfig.Session.Put(r.Context(), "reservation", res)
+
+	http.Redirect(w, r, "/make-reservation", http.StatusSeeOther)
 }
