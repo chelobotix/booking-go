@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/chelobotix/booking-go/internal/config"
 	"github.com/chelobotix/booking-go/internal/driver"
 	"github.com/chelobotix/booking-go/internal/forms"
@@ -57,14 +58,34 @@ func (repo *Repository) Generals(w http.ResponseWriter, r *http.Request) {
 
 // Reservations is the handler for the home page
 func (repo *Repository) Reservations(w http.ResponseWriter, r *http.Request) {
-	var emptyReservation models.Reservation
+	res, ok := repo.AppConfig.Session.Get(r.Context(), "reservation").(models.Reservation)
+	if !ok {
+		helpers.ServerError(w, errors.New("cannot get reservation from session"))
+		return
+	}
+
+	room, err := repo.DB.GetRoomById(res.RoomID)
+	if err != nil {
+		helpers.ServerError(w, err)
+	}
+
+	res.Room.RoomName = room.RoomName
+
+	startDate := res.StartDate.Format("2006-01-02")
+	endDate := res.StartDate.Format("2006-01-02")
+
+	stringMap := make(map[string]string)
+	stringMap["start_date"] = startDate
+	stringMap["end_date"] = endDate
+
 	data := make(map[string]interface{})
 
-	data["reservation"] = emptyReservation
+	data["reservation"] = res
 
 	render.Template(w, r, "make-reservation.page.gohtml", &models.TemplateData{
-		Form: forms.New(nil),
-		Data: data,
+		Form:      forms.New(nil),
+		Data:      data,
+		StringMap: stringMap,
 	})
 }
 
