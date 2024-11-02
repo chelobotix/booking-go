@@ -56,7 +56,6 @@
     document.getElementById("check-availability-button").addEventListener("click", function () {
         let html = `
         <form id="check-availability-form" action="" method="post" novalidate class="needs-validation">
-            <input type="hidden" name="room_id" value="1" >
             <div class="form-row">
                 <div class="col">
                     <div class="form-row" id="reservation-dates-modal">
@@ -94,6 +93,7 @@
                 let form = document.getElementById("check-availability-form");
                 let formData = new FormData(form);
                 formData.append("csrf_token", "{{.CSRFToken}}");
+                formData.append("room_id", "1");
 
                 fetch('/search-availability-json', {
                     method: "post",
@@ -102,10 +102,11 @@
                     .then(response => response.json())
                     .then(data => {
                         console.log(data);
+                        console.log(data.ok);
                         if(data.ok === true){
                             console.log("room is available")
                         }else{
-                            console.log("room is available")
+                            console.log("room is not available")
                         }
                     })
             }
