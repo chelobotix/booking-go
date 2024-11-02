@@ -74,7 +74,7 @@ func (repo *Repository) Reservations(w http.ResponseWriter, r *http.Request) {
 	repo.AppConfig.Session.Put(r.Context(), "reservation", res)
 
 	startDate := res.StartDate.Format("2006-01-02")
-	endDate := res.StartDate.Format("2006-01-02")
+	endDate := res.EndDate.Format("2006-01-02")
 
 	stringMap := make(map[string]string)
 	stringMap["start_date"] = startDate
@@ -199,12 +199,12 @@ func (repo *Repository) PostAvailability(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		helpers.ServerError(w, err)
 	}
-	endtDate, err := time.Parse(layout, end)
+	endDate, err := time.Parse(layout, end)
 	if err != nil {
 		helpers.ServerError(w, err)
 	}
 
-	availableRooms, err := repo.DB.SearchAvailabilityForAllRooms(startDate, endtDate)
+	availableRooms, err := repo.DB.SearchAvailabilityForAllRooms(startDate, endDate)
 	if err != nil {
 		helpers.ServerError(w, err)
 		return
@@ -221,7 +221,7 @@ func (repo *Repository) PostAvailability(w http.ResponseWriter, r *http.Request)
 
 	res := models.Reservation{
 		StartDate: startDate,
-		EndDate:   endtDate,
+		EndDate:   endDate,
 	}
 
 	repo.AppConfig.Session.Put(r.Context(), "reservation", res)
@@ -238,9 +238,28 @@ type jsonResponse struct {
 
 // AvailabilityJSON is the handler for the home page
 func (repo *Repository) AvailabilityJSON(w http.ResponseWriter, r *http.Request) {
+	sd := r.Form.Get("start")
+	ed := r.Form.Get("end")
+
+	layout := "2006-01-02"
+
+	startDate, err := time.Parse(layout, sd)
+	if err != nil {
+		helpers.ServerError(w, err)
+	}
+
+	endDate, err := time.Parse(layout, ed)
+	if err != nil {
+		helpers.ServerError(w, err)
+	}
+
+	roomId, _ := strconv.Atoi(r.Form.Get("room_id"))
+
+	available, _ := repo.DB.SearchAvailabilityByDateByRoomId(startDate, endDate, roomId)
+
 	response := jsonResponse{
-		Ok:      true,
-		Message: "Available",
+		Ok:      available,
+		Message: "",
 	}
 
 	outResponse, err := json.MarshalIndent(response, "", "")
