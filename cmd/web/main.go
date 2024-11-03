@@ -33,6 +33,9 @@ func main() {
 
 	defer db.SQL.Close()
 
+	defer close(appConfig.MailChan)
+	listenForMail()
+
 	fmt.Println(fmt.Sprintf("Staring application on port %s", portNumber))
 
 	srv := &http.Server{
@@ -48,6 +51,9 @@ func run() (*driver.DB, error) {
 	gob.Register(models.User{})
 	gob.Register(models.Room{})
 	gob.Register(models.Restriction{})
+
+	mailChan := make(chan models.MailData)
+	appConfig.MailChan = mailChan
 
 	appConfig.Production = false
 	infoLog = log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)

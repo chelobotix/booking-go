@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/chelobotix/booking-go/internal/config"
 	"github.com/chelobotix/booking-go/internal/driver"
 	"github.com/chelobotix/booking-go/internal/forms"
@@ -146,6 +147,23 @@ func (repo *Repository) PostReservations(w http.ResponseWriter, r *http.Request)
 		helpers.ServerError(w, err)
 		return
 	}
+
+	// send notification to guest
+	htmlMessage := fmt.Sprintf(`
+		<strong>Reservatiuon Confirmation</strong>
+		Dear %s:, <br>
+		This is a confirmation for your reservation of room %s from %s to %s.
+	`, reservation.FirstName, reservation.Room.RoomName, reservation.StartDate.Format("206-01-02"), reservation.EndDate.Format("206-01-02"))
+
+	msg := models.MailData{
+		To:       reservation.Email,
+		From:     "me@gmail.com",
+		Subject:  "Reservation Confirmation",
+		Content:  htmlMessage,
+		Template: "basic.html",
+	}
+
+	repo.AppConfig.MailChan <- msg
 
 	repo.AppConfig.Session.Put(r.Context(), "reservation", reservation)
 
