@@ -13,6 +13,7 @@ import (
 	"github.com/chelobotix/booking-go/internal/repository"
 	"github.com/chelobotix/booking-go/internal/repository/dbrepo"
 	"github.com/go-chi/chi/v5"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -352,4 +353,44 @@ func (repo *Repository) BookRoom(w http.ResponseWriter, r *http.Request) {
 	repo.AppConfig.Session.Put(r.Context(), "reservation", res)
 
 	http.Redirect(w, r, "/make-reservation", http.StatusTemporaryRedirect)
+}
+
+func (repo *Repository) UserLogin(w http.ResponseWriter, r *http.Request) {
+	render.Template(w, r, "login.page.gohtml", &models.TemplateData{
+		Form: forms.New(nil),
+	})
+}
+
+func (repo *Repository) PostUserLogin(w http.ResponseWriter, r *http.Request) {
+	_ = repo.AppConfig.Session.RenewToken(r.Context())
+
+	err := r.ParseForm()
+	if err != nil {
+		log.Println(err)
+	}
+
+	email := r.Form.Get("email")
+	password := r.Form.Get("password")
+
+	form := forms.New(r.PostForm)
+	form.Required("email", "password")
+	form.IsEmail("email")
+	if !form.Valid() {
+		render.Template(w, r, "login.page.gohtml", &models.TemplateData{
+			Form: form,
+		})
+		return
+	}
+
+	id, _, err := repo.DB.Authenticate(email, password)
+	if err != nil {
+		log.Println(err)
+		repo.AppConfig.Session.Put(r.Context(), "error", "Invalid login credentials")
+		http.Redirect(w, r, "user/login", http.StatusSeeOther)
+		return
+	}
+
+	repo.AppConfig.Session.Put(r.Context(), "user_id", id)
+	repo.AppConfig.Session.Put(r.Context(), "flash", "Logged in successfully")
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
