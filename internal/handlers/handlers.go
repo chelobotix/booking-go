@@ -16,6 +16,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -441,10 +442,17 @@ func (repo *Repository) AdminCalendarReservations(w http.ResponseWriter, r *http
 }
 
 func (repo *Repository) AdminShowReservation(w http.ResponseWriter, r *http.Request) {
+	exploded := strings.Split(r.RequestURI, "/")
+	src := exploded[3]
+
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		helpers.ServerError(w, err)
 	}
+
+	stringMap := make(map[string]string)
+	stringMap["src"] = src
+
 	reservation, err := repo.DB.GetReservation(id)
 	if err != nil {
 		helpers.ServerError(w, err)
@@ -455,6 +463,8 @@ func (repo *Repository) AdminShowReservation(w http.ResponseWriter, r *http.Requ
 	data["reservation"] = reservation
 
 	render.Template(w, r, "admin-reservation-show.page.gohtml", &models.TemplateData{
-		Data: data,
+		Data:      data,
+		StringMap: stringMap,
+		Form:      forms.New(nil),
 	})
 }
