@@ -386,11 +386,75 @@ func (repo *Repository) PostUserLogin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err)
 		repo.AppConfig.Session.Put(r.Context(), "error", "Invalid login credentials")
-		http.Redirect(w, r, "user/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 		return
 	}
 
 	repo.AppConfig.Session.Put(r.Context(), "user_id", id)
 	repo.AppConfig.Session.Put(r.Context(), "flash", "Logged in successfully")
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (repo *Repository) UserLogout(w http.ResponseWriter, r *http.Request) {
+	_ = repo.AppConfig.Session.Destroy(r.Context())
+	_ = repo.AppConfig.Session.RenewToken(r.Context())
+
+	http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+}
+
+func (repo *Repository) AdminDashboard(w http.ResponseWriter, r *http.Request) {
+	render.Template(w, r, "admin-dashboard.page.gohtml", &models.TemplateData{})
+}
+
+func (repo *Repository) AdminNewReservations(w http.ResponseWriter, r *http.Request) {
+	reservations, err := repo.DB.AllNewReservations()
+	if err != nil {
+		helpers.ServerError(w, err)
+		return
+	}
+
+	data := make(map[string]interface{})
+	data["reservations"] = reservations
+
+	render.Template(w, r, "admin-all-reservations.page.gohtml", &models.TemplateData{
+		Data: data,
+	})
+}
+
+func (repo *Repository) AdminAllReservations(w http.ResponseWriter, r *http.Request) {
+	reservations, err := repo.DB.AllReservations()
+	if err != nil {
+		helpers.ServerError(w, err)
+		return
+	}
+
+	data := make(map[string]interface{})
+	data["reservations"] = reservations
+
+	render.Template(w, r, "admin-all-reservations.page.gohtml", &models.TemplateData{
+		Data: data,
+	})
+}
+
+func (repo *Repository) AdminCalendarReservations(w http.ResponseWriter, r *http.Request) {
+	render.Template(w, r, "admin-calendar-reservations.page.gohtml", &models.TemplateData{})
+}
+
+func (repo *Repository) AdminShowReservation(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		helpers.ServerError(w, err)
+	}
+	reservation, err := repo.DB.GetReservation(id)
+	if err != nil {
+		helpers.ServerError(w, err)
+		return
+	}
+
+	data := make(map[string]interface{})
+	data["reservation"] = reservation
+
+	render.Template(w, r, "admin-reservation-show.page.gohtml", &models.TemplateData{
+		Data: data,
+	})
 }

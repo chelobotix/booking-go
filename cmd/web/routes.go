@@ -32,11 +32,24 @@ func routes(app *config.AppConfig) http.Handler {
 
 	mux.Get("/user/login", handlers.Repo.UserLogin)
 	mux.Post("/user/login", handlers.Repo.PostUserLogin)
+	mux.Get("/user/logout", handlers.Repo.UserLogout)
 
 	mux.Get("/contact", handlers.Repo.Contact)
 
 	fileServer := http.FileServer(http.Dir("./static"))
 	mux.Handle("/static/*", http.StripPrefix("/static", fileServer))
+
+	mux.Route("/admin", func(mux chi.Router) {
+		// Use middleware
+		//mux.Use(Auth)
+
+		mux.Get("/dashboard", handlers.Repo.AdminDashboard)
+
+		mux.Get("/reservations-new", handlers.Repo.AdminNewReservations)
+		mux.Get("/reservations-all", handlers.Repo.AdminAllReservations)
+		mux.Get("/reservations-calendar", handlers.Repo.AdminCalendarReservations)
+		mux.Get("/reservations/{src}/{id}", handlers.Repo.AdminShowReservation)
+	})
 
 	return mux
 }

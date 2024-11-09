@@ -9,13 +9,21 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+	"time"
 )
 
 var app *config.AppConfig
+var functions = template.FuncMap{
+	"humanDate": HumanDate,
+}
 
 // NewRenderer set the config fot the template package
 func NewRenderer(appConfig *config.AppConfig) {
 	app = appConfig
+}
+
+func HumanDate(t time.Time) string {
+	return t.Format("2006-01-02")
 }
 
 var templateCache map[string]*template.Template
@@ -25,6 +33,9 @@ func AddDefaultData(td *models.TemplateData, r *http.Request) *models.TemplateDa
 	td.Warning = app.Session.PopString(r.Context(), "warning")
 	td.Error = app.Session.PopString(r.Context(), "error")
 	td.CSRFToken = nosurf.Token(r)
+	if app.Session.Exists(r.Context(), "user_id") {
+		td.IsAuthenticated = 1
+	}
 	return td
 }
 
