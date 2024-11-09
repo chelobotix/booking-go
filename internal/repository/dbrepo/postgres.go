@@ -338,7 +338,9 @@ func (m *postgresDBRepo) UpdateReservation(res models.Reservation) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	query := `UPDATE reservations SET first_name = $1, last_name = $2, email = $3, phone = $4, updated_at = $5`
+	query := `UPDATE reservations
+			  SET first_name = $1, last_name = $2, email = $3, phone = $4, updated_at = $5
+			  WHERE id = $6`
 
 	_, err := m.DB.ExecContext(
 		ctx,
@@ -348,6 +350,7 @@ func (m *postgresDBRepo) UpdateReservation(res models.Reservation) error {
 		res.Email,
 		res.Phone,
 		time.Now(),
+		res.ID,
 	)
 
 	if err != nil {
