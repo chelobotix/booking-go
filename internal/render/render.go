@@ -14,7 +14,10 @@ import (
 
 var app *config.AppConfig
 var functions = template.FuncMap{
-	"humanDate": HumanDate,
+	"humanDate":  HumanDate,
+	"formatDate": FormatDate,
+	"iterate":    Iterate,
+	"add":        Add,
 }
 
 // NewRenderer set the config fot the template package
@@ -24,6 +27,25 @@ func NewRenderer(appConfig *config.AppConfig) {
 
 func HumanDate(t time.Time) string {
 	return t.Format("2006-01-02")
+}
+
+func FormatDate(t time.Time, f string) string {
+	return t.Format(f)
+}
+
+func Iterate(count int) []int {
+	var i int
+	var items []int
+
+	for i = 0; i < count; i++ {
+		items = append(items, i)
+	}
+
+	return items
+}
+
+func Add(a, b int) int {
+	return a + b
 }
 
 var templateCache map[string]*template.Template
@@ -78,7 +100,7 @@ func CreateTemplateCache() (map[string]*template.Template, error) {
 
 	for _, page := range pages {
 		name := filepath.Base(page)
-		ts, err := template.New(name).ParseFiles(page)
+		ts, err := template.New(name).Funcs(functions).ParseFiles(page)
 
 		if err != nil {
 			return myCache, err

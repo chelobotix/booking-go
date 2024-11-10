@@ -455,6 +455,9 @@ func (repo *Repository) AdminCalendarReservations(w http.ResponseWriter, r *http
 		now = time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
 	}
 
+	data := make(map[string]interface{})
+	data["now"] = now
+
 	next := now.AddDate(0, 1, 0)
 	last := now.AddDate(0, -1, 0)
 
@@ -472,8 +475,57 @@ func (repo *Repository) AdminCalendarReservations(w http.ResponseWriter, r *http
 	stringMap["this_month"] = now.Format("01")
 	stringMap["this_month_year"] = now.Format("2006")
 
+	//getting first and last day
+	currentYear, currentMonth, _ := now.Date()
+	currentLocation := now.Location()
+	firstOfMonth := time.Date(currentYear, currentMonth, 1, 0, 0, 0, 0, currentLocation)
+	lastOfMonth := firstOfMonth.AddDate(0, 1, -1)
+
+	intMap := make(map[string]int)
+	intMap["days_in_month"] = lastOfMonth.Day()
+
+	rooms, err := repo.DB.GetAllRooms()
+	if err != nil {
+		helpers.ServerError(w, err)
+		return
+	}
+
+	data["rooms"] = rooms
+
+	for _, room := range rooms {
+		reservationMap := make(map[string]int)
+		blockMap := make(map[string]int)
+
+		for d := firstOfMonth; d.After(lastOfMonth) == false; d = d.AddDate(0, 0, 1) {
+			reservationMap[d.Format("2006-01-02")] = 0
+			blockMap[d.Format("2006-01-02")] = 0
+		}
+
+		restrictions, err := repo.DB.GetRestrictionsForRoomByDate(room.ID, firstOfMonth, lastOfMonth)
+		if err != nil {
+			helpers.ServerError(w, err)
+			return
+		}
+
+		for _, r := range restrictions {
+			if r.ReservationID > 0 {
+				for d := r.StartDate; d.After(r.EndDate) == false; d = d.AddDate(0, 0, 1) {
+					reservationMap[d.Format("2006-01-02")] = r.ID
+				}
+			} else {
+				blockMap[r.StartDate.Format("2006-01-02")] = r.ReservationID
+			}
+		}
+		data[fmt.Sprintf("reservation_map_%d", room.ID)] = reservationMap
+		data[fmt.Sprintf("block_map_%d", room.ID)] = blockMap
+
+		repo.AppConfig.Session.Put(r.Context(), fmt.Sprintf("block_map_%d", room.ID), blockMap)
+	}
+
 	render.Template(w, r, "admin-calendar-reservations.page.gohtml", &models.TemplateData{
 		StringMap: stringMap,
+		Data:      data,
+		IntMap:    intMap,
 	})
 }
 
