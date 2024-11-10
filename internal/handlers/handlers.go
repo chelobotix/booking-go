@@ -438,7 +438,43 @@ func (repo *Repository) AdminAllReservations(w http.ResponseWriter, r *http.Requ
 }
 
 func (repo *Repository) AdminCalendarReservations(w http.ResponseWriter, r *http.Request) {
-	render.Template(w, r, "admin-calendar-reservations.page.gohtml", &models.TemplateData{})
+	now := time.Now()
+
+	if r.URL.Query().Get("y") != "" && r.URL.Query().Get("m") != "" {
+		year, err := strconv.Atoi(r.URL.Query().Get("y"))
+		if err != nil {
+			helpers.ServerError(w, err)
+			return
+		}
+		month, err := strconv.Atoi(r.URL.Query().Get("m"))
+		if err != nil {
+			helpers.ServerError(w, err)
+			return
+		}
+
+		now = time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+	}
+
+	next := now.AddDate(0, 1, 0)
+	last := now.AddDate(0, -1, 0)
+
+	nextMonth := next.Format("01")
+	nextMonthYear := next.Format("2006")
+
+	lastMonth := last.Format("01")
+	lastMonthYear := last.Format("2006")
+
+	stringMap := make(map[string]string)
+	stringMap["next_month"] = nextMonth
+	stringMap["next_month_year"] = nextMonthYear
+	stringMap["last_month"] = lastMonth
+	stringMap["last_month_year"] = lastMonthYear
+	stringMap["this_month"] = now.Format("01")
+	stringMap["this_month_year"] = now.Format("2006")
+
+	render.Template(w, r, "admin-calendar-reservations.page.gohtml", &models.TemplateData{
+		StringMap: stringMap,
+	})
 }
 
 func (repo *Repository) AdminShowReservation(w http.ResponseWriter, r *http.Request) {
@@ -522,5 +558,22 @@ func (repo *Repository) AdminProcessReservation(w http.ResponseWriter, r *http.R
 	}
 
 	repo.AppConfig.Session.Put(r.Context(), "flash", "Reservation marked as processed")
+	http.Redirect(w, r, fmt.Sprintf("/admin/reservations-%s", src), http.StatusSeeOther)
+}
+
+func (repo *Repository) AdminDeleteReservation(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		helpers.ServerError(w, err)
+	}
+
+	src := chi.URLParam(r, "src")
+
+	err = repo.DB.DeleteReservation(id)
+	if err != nil {
+		helpers.ServerError(w, err)
+	}
+
+	repo.AppConfig.Session.Put(r.Context(), "flash", "Reservation deleted")
 	http.Redirect(w, r, fmt.Sprintf("/admin/reservations-%s", src), http.StatusSeeOther)
 }
